@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<script>
+
+    state = "US";
+ 
+</script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.3/Chart.min.js" integrity="sha256-R4pqcOYV8lt7snxMQO/HSbVCFRPMdrhAFMH+vr9giYI=" crossorigin="anonymous"></script>
+
+<script type="text/javascript">
+  // Set "seen_instructions" cookie
+  
+  if (document.cookie.split(';').some(function(item) {
+    return item.trim().indexOf('seen_instructions=') == 0
+  })) {
+    console.log('The cookie "seen_instructions" exists (ES5)')
+    console.log(document.cookie);
+    
+  } else {
+    document.cookie = "seen_instructions=3";
+  }
+</script>
+  
+
+<style>
+  body {font-family: sans-serif; color: #999;}
+  a {font-family: sans-serif; text-decoration: none; color: #999;}
+  h1 {
+    margin: 0 15px;
+  }
+
+  #state_list {margin: 20px;}
+  #state_list p {text-align: center;}
+
+
+
+
+
+  #instructions {
+    opacity: 1;
+    transition: opacity 1s; 
+
+    color: #fff;
+    background: #bbb;
+    padding: 10px;
+    border-radius: 6px;
+    position: absolute;
+    bottom: 180px;
+    left: 20px;
+  }
+
+  #instructions.fade {
+   opacity: 0;
+  }
+  #small_print {
+    margin: 0 15px;
+  }
+</style>
+
+</head>
+
+<body>
+<div>
+  <h1><a href="index.htm">flaminglogos COVID-19 Tracking: Total US</a></h1>
+</div>
+
+<div id="charts" style="display: flex;">
+  <div class="chart-container" style="position: relative; flex: 0 0 50%;">
+    <canvas id="abs_death_chart" width="250" height="120"></canvas>
+  </div>
+  <div class="chart-container" style="position: relative; flex: 1">
+    <canvas id="inc_death_chart" width="250" height="120"></canvas>
+  </div>
+</div>
+
+<div id="state_list"></div>
+
+
+<div id="small_print">
+  <div style="float: left;><p style="text-align: left;"> <a id="footer_link" style="font-size: .8em;" href="us_deaths.htm">See Deaths ></a></p></div>
+  <div"><p style="text-align: right;"> <a style="font-size: .8em;" href="https://covidtracking.com/">Data from The COVID Tracking Project ></a></p></div>
+</div>
+
+<script>
+ var footer_link = document.getElementById('footer_link');
+ var new_href = "deaths.htm?state=" + state;
+ if (state !== "US") {
+   footer_link.setAttribute('href',new_href);
+ }
+</script>
+
+<script>
+
+var getJSON = function(url, callback) {
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET', url, true);
+  xhr.responseType = 'json';
+  xhr.onload = function() {
+    var status = xhr.status;
+    if (status === 200) {
+      //console.log("status=200");
+      callback(null, xhr.response);
+    } else {
+      callback(status, xhr.response);
+    }
+  };
+  xhr.send();
+};
+
+death_array = [];
+rev_death_array = [];
+
+inc_death_array = [];
+rev_inc_death_array = [];
+
+date_array = [];
+rev_date_array = [];
+
+
+
+
+
+json_url = 'https://api.covidtracking.com/v1/us/daily.json';
+death_chart_label = 'Currently Hospitalized: ' + state;
+inc_death_chart_label = 'Increase in Positives: ' + state;
+inc_death_chart_moving_avg_label = "7 Day Average: " + state;
+
+getJSON(json_url,
+function(err, data) {
+  if (err !== null) {
+    console.log('ct_all: if err !== null');
+  } else {
+    //console.log('ct_all query count: ' + data.length);
+    ct_all = data;
+    console.log(ct_all);
+    console.log(" ");
+    
+
+
+    for (const element of ct_all) {
+      // Create the death numbers array for the graph
+      // Zero out any null or undefined values
+      if (element.hospitalizedCurrently !== undefined && element.hospitalizedCurrently !== null) {
+        var dots = element.death / 50;
+        death_array.push(element.hospitalizedCurrently);
+      } else {
+        death_array.push(0);
+      }
+
+      // Create the inc_death array for the graph
+      if (element.positiveIncrease !== undefined && element.positiveIncrease !== null && element.positiveIncrease >= 0) {
+        inc_death_array.push(element.positiveIncrease);
+      } else {
+        inc_death_array.push(0);
+      }
+      
+      //Create the date array for the graph
+      date_array.push(element.date);
+
+      // Draw low-res graph in the console
+      var bar = "";
+      for (i = 1; i <= dots; i++) {
+        bar = bar + "* ";
+      }
+      //console.log(element.date + ': ' + bar + " " + element.death);
+    }
+
+    rev_death_array = death_array.reverse();
+    rev_inc_death_array = inc_death_array.reverse();
+    rev_date_array = date_array.reverse();
+
+    console.log("rev_inc_death_array:");
+    console.log(rev_inc_death_array);
+
+    // Create the moving average of the new positive cases
+    moveMean = [];
+    for (i = 0; i < rev_inc_death_array.length; i++) {
+      if (i < 6) {
+        moveMean.push(0);
+      } else {
+        mean = (rev_inc_death_array[i] + rev_inc_death_array[i-1] + rev_inc_death_array[i-2] + rev_inc_death_array[i-3] + rev_inc_death_array[i-4] + rev_inc_death_array[i-5] + rev_inc_death_array[i-6]) / 7
+        moveMean.push(Math.round(mean));
+      }
+    }
+    console.log("moveMean:");
+    console.log(moveMean);
+
+  }
+
+  // Prepare the arrays
+  //var death_keys = [...death_array.keys()];
+  //console.log('death_keys: ' + death_keys);
+
+
+
+  var ctx = document.getElementById('abs_death_chart');
+  var myChartx = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: rev_date_array,
+      datasets: [{
+        label: death_chart_label,
+        data: rev_death_array,
+        borderColor: "#c99",
+        fill: false,
+        borderWidth: 1,
+      }]
+    },
+    options: {
+        scales: {
+            yAxes: [{
+                ticks: {
+                    beginAtZero: true
+                },
+                position: "right",
+            }],
+            xAxes: [{
+              display: false,
+            }]
+        }
+    }
+  });
+
+  var cty = document.getElementById('inc_death_chart');
+  //console.log(cty);
+  var myCharty = new Chart(cty, {
+    type: 'bar',
+    data: {
+      labels: rev_date_array,
+      datasets: [{
+        label: inc_death_chart_label,
+        data: rev_inc_death_array,
+        borderColor: "#99c",
+        fill: false,
+        borderWidth: 1,
+      }, {
+        label: inc_death_chart_moving_avg_label,
+        data: moveMean,
+        borderColor: "#aad",
+        fill: false,
+        borderwidth: 1,
+        type: "line"
+      }]
+    },
+    options: {
+        scales: {
+            yAxes: [{
+                ticks: {
+                    beginAtZero: true
+                },
+                position: "right",
+            }],
+            xAxes: [{
+              display: false,
+            }]
+        }
+    }
+  });
+
+});
+
+// Render the state links
+state_array = ["AL", "AK", "AR", "AZ", "CA", "CO", "CT", "DE", "DC", "FL", "GA", "HI", "IA", "ID", "IL", "IN", "KS", "KY", "LA", "MA", "MD", "ME", "MI", "MN", "MO", "MS", "MT", "NC", "ND", "NE", "NH", "NJ", "NM", "NV", "NY", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VA", "VT", "WA", "WI", "WV", "WY", "AS", "GU", "MP", "PR", "VI"];
+//console.log(state_array);
+
+state_html = "<p>";
+for (const state_abbrev of state_array) {
+  single_link = "<a href='index.htm?state=" + state_abbrev + "'>" + state_abbrev + "</a> ";
+  state_html += single_link;
+}
+state_html += "</p>";
+//console.log(state_html);
+var state_div = document.getElementById('state_list');
+//console.log(state_div);
+// Fill it
+state_div.innerHTML = state_html;
+
+
+</script>
+
+<div id="instructions">Choose a state from the list, and hover/tap a data point for the absolute value <button id="handle">Close</button> 
+
+</div>
+
+<script type="text/javascript">
+  var slideSource = document.getElementById('instructions');
+
+  document.getElementById('handle').onclick = function () {
+    slideSource.classList.toggle('fade');
+  }
+</script>
+
+</body>
+</html>
