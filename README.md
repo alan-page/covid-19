@@ -1,2 +1,2 @@
 # covid-19
-COVID-19 data visulization
+COVID-19 data visulization project
