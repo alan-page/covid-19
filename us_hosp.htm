@@ -16,11 +16,15 @@
   if (document.cookie.split(';').some(function(item) {
     return item.trim().indexOf('seen_instructions=') == 0
   })) {
-    console.log('The cookie "seen_instructions" exists (ES5)')
+    console.log('The cookie "seen_instructions" exists (ES5)');
     console.log(document.cookie);
     
   } else {
-    document.cookie = "seen_instructions=3";
+    // Set an arbitraary cookie value for testing
+    console.log('The cookie does not exist. Set it.');
+
+    // Disable the cookie temporarily
+    // document.cookie = "seen_instructions=3";
   }
 </script>
   
